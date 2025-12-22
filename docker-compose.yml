@@ -1,0 +1,110 @@
+services:
+  spark-master:
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "8081:8080"   # Spark Master UI
+      - "7077:7077"   # Spark Master port
+    volumes:
+      - ${PROJECT_ROOT}/data:/opt/data
+      - ${DOCKER_VOLUMES_ROOT}/spark-events:/opt/spark-events
+    networks:
+      - nyc-net
+
+  spark-worker-1:
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_WEBUI_PORT=8081
+    depends_on:
+      - spark-master
+    ports:
+      - "8082:8081"   # Worker UI
+    volumes:
+      - ${PROJECT_ROOT}/data:/opt/data
+      - ${DOCKER_VOLUMES_ROOT}/spark-events:/opt/spark-events
+    networks:
+      - nyc-net
+
+  spark-worker-2:
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    container_name: spark-worker-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_WEBUI_PORT=8082
+    depends_on:
+      - spark-master
+    ports:
+      - "8083:8082"   # Worker UI
+    volumes:
+      - ${PROJECT_ROOT}/data:/opt/data
+      - ${DOCKER_VOLUMES_ROOT}/spark-events:/opt/spark-events
+    networks:
+      - nyc-net
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console
+    volumes:
+      - ${DOCKER_VOLUMES_ROOT}/minio:/data
+    networks:
+      - nyc-net
+
+  # Creates buckets at startup
+  minio-mc:
+    image: minio/mc:RELEASE.2024-01-16T16-06-34Z
+    container_name: minio-mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do sleep 2; done;
+      mc mb -p local/nyc-raw || true;
+      mc mb -p local/nyc-interim || true;
+      mc mb -p local/nyc-processed || true;
+      mc ls local;
+      tail -f /dev/null
+      "
+    networks:
+      - nyc-net
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${DOCKER_VOLUMES_ROOT}/postgres:/var/lib/postgresql/data
+    networks:
+      - nyc-net
+
+networks:
+  nyc-net:
+    name: nyc-net
+    driver: bridge
