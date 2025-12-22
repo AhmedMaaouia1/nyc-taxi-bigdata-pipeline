@@ -1,0 +1,35 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+spark-events/
+
+# Scala / sbt
+target/
+project/target/
+project/project/
+.metals/
+.bloop/
+*.class
+
+# Python (plus tard)
+__pycache__/
+*.pyc
+.venv/
+
+# Data Lake (on versionne la structure, pas la donnée)
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+!data/**/.gitkeep
+
+# Secrets / env
+.env
+.env.*
