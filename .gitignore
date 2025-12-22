@@ -33,3 +33,6 @@ data/external/*
 # Secrets / env
 .env
 .env.*
+
+# Docker
+*.tar

@@ -12,6 +12,7 @@ services:
     volumes:
       - ${PROJECT_ROOT}/data:/opt/data
       - ${DOCKER_VOLUMES_ROOT}/spark-events:/opt/spark-events
+      - ${PROJECT_ROOT}:/opt/workdir
     networks:
       - nyc-net
 
@@ -31,6 +32,7 @@ services:
     ports:
       - "8082:8081"   # Worker UI
     volumes:
+      - ${PROJECT_ROOT}:/opt/workdir
       - ${PROJECT_ROOT}/data:/opt/data
       - ${DOCKER_VOLUMES_ROOT}/spark-events:/opt/spark-events
     networks:
@@ -52,6 +54,7 @@ services:
     ports:
       - "8083:8082"   # Worker UI
     volumes:
+      - ${PROJECT_ROOT}:/opt/workdir
       - ${PROJECT_ROOT}/data:/opt/data
       - ${DOCKER_VOLUMES_ROOT}/spark-events:/opt/spark-events
     networks:

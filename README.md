@@ -1,6 +1,6 @@
 # NYC Taxi Big Data Pipeline
 
-Projet académique personnel : déploiement d'une infra Big Data (Spark + MinIO + PostgreSQL) via Docker Compose, puis exercices ex01 → ex06.
+Projet : déploiement d'une infra Big Data (Spark + MinIO + PostgreSQL) via Docker Compose, puis exercices ex01 → ex06.
 
 ## Architecture (Partie 1)
 - Spark Cluster distribué (Docker Linux)
