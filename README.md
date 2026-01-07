@@ -13,7 +13,7 @@ Pipeline Big Data complet pour l'analyse des données NYC Taxi, depuis la collec
 
 Le projet repose sur une **infrastructure Big Data distribuée** basée sur **Spark, MinIO et PostgreSQL**, entièrement orchestrée via **Docker Compose**.
 
-![Architecture](Documents/Project_Architecture_detailed.png)
+![Architecture](Documents/Project_Architecture.png)
 
 ---
 
