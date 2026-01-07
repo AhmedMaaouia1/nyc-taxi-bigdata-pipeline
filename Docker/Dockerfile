@@ -8,8 +8,26 @@ ENV SPARK_HOME=/opt/spark
 ENV PATH="${SPARK_HOME}/bin:${SPARK_HOME}/sbin:${PATH}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl bash ca-certificates tini procps \
-  && rm -rf /var/lib/apt/lists/*
+    python3 \
+    python3-distutils \
+    python3-pip \
+    curl \
+    bash \
+    ca-certificates \
+    tini \
+    procps \
+ && rm -rf /var/lib/apt/lists/*
+
+# Ensure python command exists
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+RUN pip3 install --no-cache-dir \
+    numpy \
+    pandas \
+    flake8 \
+    pytest \
+    pyment \
+    autopep8
 
 # Install Spark
 RUN mkdir -p /opt \

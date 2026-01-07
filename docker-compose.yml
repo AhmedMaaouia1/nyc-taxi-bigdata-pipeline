@@ -6,6 +6,8 @@ services:
     container_name: spark-master
     environment:
       - SPARK_MODE=master
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
     ports:
       - "8081:8080"   # Spark Master UI
       - "7077:7077"   # Spark Master port
@@ -27,6 +29,8 @@ services:
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=2g
       - SPARK_WORKER_WEBUI_PORT=8081
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
     depends_on:
       - spark-master
     ports:
@@ -49,6 +53,8 @@ services:
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=2g
       - SPARK_WORKER_WEBUI_PORT=8082
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
     depends_on:
       - spark-master
     ports:
@@ -107,7 +113,37 @@ services:
     networks:
       - nyc-net
 
+  # Streamlit ML Demo Application
+  streamlit:
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile.streamlit
+    container_name: streamlit-ml-demo
+    ports:
+      - "8501:8501"   # Streamlit UI
+    volumes:
+      # Mount the ML model and reports (read-only)
+      - ${PROJECT_ROOT}/ex05_ml_prediction_service/models:/app/models:ro
+      - ${PROJECT_ROOT}/ex05_ml_prediction_service/reports:/app/reports:ro
+      # Mount the streamlit app for hot-reload during development
+      - ${PROJECT_ROOT}/ex05_ml_prediction_service/streamlit_app:/app/streamlit_app:ro
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nyc-net
+
 networks:
   nyc-net:
     name: nyc-net
     driver: bridge
+

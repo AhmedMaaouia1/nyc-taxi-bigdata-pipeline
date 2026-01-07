@@ -1,0 +1,130 @@
+flowchart LR
+
+%% =========================
+%% SOURCES
+%% =========================
+A["NYC TLC Parquet Files<br>(Official Website)"]:::source
+
+%% =========================
+%% DATA LAKE
+%% =========================
+subgraph DataLake["Data Lake (MinIO)"]
+    DL_RAW["Raw Zone<br>nyc-raw"]:::datalake
+    DL_INTERIM["Interim Zone<br>nyc-interim"]:::datalake
+end
+
+%% =========================
+%% SPARK CLUSTER (EX01 + EX02)
+%% =========================
+subgraph SparkCluster["Spark Cluster – EX01 & EX02"]
+    M["Spark Master"]:::spark
+    W1["Spark Worker 1"]:::spark
+    W2["Spark Worker 2"]:::spark
+end
+
+M --> W1
+M --> W2
+
+%% =========================
+%% EX01 – DATA RETRIEVAL (SPARK)
+%% =========================
+A -->|"EX01 – spark-submit<br>Download parquet"| SparkCluster
+SparkCluster -->|"Write Parquet"| DL_RAW
+
+%% =========================
+%% EX02 – DATA INGESTION (SPARK, 2 BRANCHES)
+%% =========================
+DL_RAW -- Read --> SparkCluster
+
+SparkCluster -- "EX02 – Branch 1<br>Write Parquet" --> DL_INTERIM
+SparkCluster -- "EX02 – Branch 2<br>Write JDBC" --> STAGING
+
+%% =========================
+%% DATA WAREHOUSE (EX03)
+%% =========================
+subgraph DataWarehouse["Data Warehouse – PostgreSQL (EX03)"]
+    STAGING["yellow_trips_staging<br>(mono-mois)"]:::warehouse
+    DW_STAR["Star Schema<br>fact_trip + dimensions enrichies"]:::warehouse
+end
+
+STAGING --> DW_STAR
+
+%% =========================
+%% EX04 – ANALYTICAL CONSUMPTION
+%% =========================
+subgraph EX04["EX04 – Analytical Consumption"]
+    EDA["EDA Notebook<br>(Jupyter / SQL)"]:::analytics
+    DASH["Streamlit Dashboard<br>(Interactive BI)"]:::analytics
+end
+
+DW_STAR --> EDA
+DW_STAR --> DASH
+
+%% =========================
+%% EX05 – ML PREDICTION SERVICE
+%% =========================
+subgraph EX05["EX05 – ML Prediction Service (Spark MLlib)"]
+    
+    subgraph SlidingWindow["Fenêtre Glissante"]
+        TRAIN_DATA["Training Data<br>M-3, M-2, M-1"]:::ml
+        TEST_DATA["Test Data<br>Mois M"]:::ml
+    end
+    
+    VALIDATE["Data Validation<br>check_path_exists()"]:::ml
+    FEATURES["Feature Engineering<br>features.py"]:::ml
+    TRAINER["GBT Regressor<br>trainer.py"]:::ml
+    EVAL["Evaluation<br>RMSE, MAE, R²"]:::ml
+    
+    subgraph Registry["Model Registry"]
+        CANDIDATE["Candidate Model"]:::mlregistry
+        CURRENT["Current Model<br>(Production)"]:::mlregistry
+        REGISTRY_JSON["model_registry.json<br>Métadonnées"]:::mlregistry
+    end
+    
+    COMPARE["Comparaison<br>2/3 métriques"]:::ml
+    PROMOTE{"Promotion?"}:::decision
+    
+    REPORTS["Reports<br>train_metrics.json<br>error_analysis"]:::ml
+end
+
+DL_INTERIM -->|"Read Parquet<br>(3 mois train + 1 test)"| VALIDATE
+VALIDATE --> TRAIN_DATA
+VALIDATE --> TEST_DATA
+TRAIN_DATA --> FEATURES
+TEST_DATA --> FEATURES
+FEATURES --> TRAINER
+TRAINER --> EVAL
+EVAL --> CANDIDATE
+EVAL --> REPORTS
+CANDIDATE --> COMPARE
+CURRENT --> COMPARE
+COMPARE --> PROMOTE
+PROMOTE -->|"✅ 2+ métriques<br>améliorées"| CURRENT
+PROMOTE -->|"❌ Discard"| CANDIDATE
+
+%% =========================
+%% EX06 – AIRFLOW ORCHESTRATION
+%% =========================
+subgraph EX06["EX06 – Airflow Orchestration"]
+    AIRFLOW["Airflow Scheduler<br>(Monthly DAG)"]:::orchestration
+    DAG_ML["ML Pipeline Task<br>ml_pipeline.py"]:::orchestration
+    DAG_INGEST["Ingestion Tasks"]:::orchestration
+end
+
+AIRFLOW --> DAG_INGEST
+AIRFLOW --> DAG_ML
+DAG_INGEST -. Trigger .-> SparkCluster
+DAG_ML -. "--test-month {{ ds }}" .-> EX05
+
+%% =========================
+%% STYLES
+%% =========================
+classDef spark fill:#f6c85f,stroke:#333
+classDef datalake fill:#6fa8dc,stroke:#333
+classDef warehouse fill:#93c47d,stroke:#333
+classDef source fill:#cccccc,stroke:#333
+classDef orchestration fill:#b4a7d6,stroke:#333
+classDef analytics fill:#ffd966,stroke:#333
+classDef ml fill:#ff9999,stroke:#333
+classDef mlregistry fill:#ffcccc,stroke:#333
+classDef decision fill:#ff6666,stroke:#333,color:#fff

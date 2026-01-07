@@ -1,0 +1,48 @@
+{
+  "buckets": [
+    {
+      "bucket_name": "low",
+      "min_price": 0,
+      "max_price": 10,
+      "count": 25154,
+      "pct_of_total": 2.17,
+      "mean_error": -1.4316,
+      "mean_abs_error": 2.0832,
+      "rmse": 6.7782,
+      "median_error": -0.3535
+    },
+    {
+      "bucket_name": "medium",
+      "min_price": 10,
+      "max_price": 30,
+      "count": 864859,
+      "pct_of_total": 74.76,
+      "mean_error": -0.1518,
+      "mean_abs_error": 1.2029,
+      "rmse": 2.2358,
+      "median_error": 0.0634
+    },
+    {
+      "bucket_name": "high",
+      "min_price": 30,
+      "max_price": 60,
+      "count": 162477,
+      "pct_of_total": 14.05,
+      "mean_error": -0.2038,
+      "mean_abs_error": 3.2747,
+      "rmse": 4.9597,
+      "median_error": 0.4142
+    },
+    {
+      "bucket_name": "very_high",
+      "min_price": 60,
+      "max_price": 9999,
+      "count": 104306,
+      "pct_of_total": 9.02,
+      "mean_error": 1.9125,
+      "mean_abs_error": 7.1598,
+      "rmse": 14.3313,
+      "median_error": 1.8905
+    }
+  ]
+}

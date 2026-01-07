@@ -1,0 +1,47 @@
+{
+  "run_type": "training",
+  "model": "GBTRegressor",
+  "timestamp": "2026-01-05T10:30:22.509996",
+  "data": {
+    "months": [
+      "2023/01",
+      "2023/02"
+    ],
+    "train_rows": 4623141,
+    "test_rows": 1156796
+  },
+  "metrics": {
+    "rmse": 5.168245538696855,
+    "mae": 2.050172110182955,
+    "r2": 0.9423410194166835
+  },
+  "params": {
+    "maxDepth": 6,
+    "maxIter": 50,
+    "seed": 42
+  },
+  "execution": {
+    "duration_seconds": 3774.52
+  },
+  "error_analysis": {
+    "summary": {
+      "count": 1156796,
+      "mean_error": -0.0007600774471610143,
+      "std_error": 5.168247716669317,
+      "min_error": -340.04203168013106,
+      "max_error": 923.2591236127189,
+      "median_error": 0.11695036092314481,
+      "mean_abs_error": 2.050172110182955,
+      "p25_error": -1.0650902582974382,
+      "p75_error": 1.1030970588924411,
+      "p95_error": 3.8869731060671135,
+      "p99_error": 10.636948396270128,
+      "pct_underestimate": 46.99,
+      "pct_overestimate": 53.01
+    },
+    "business_insights": [
+      "Model predictions are well-balanced between over/under estimation.",
+      "Most common cause of high errors: 'cash_payment_tip_not_recorded' (6/10 top errors)."
+    ]
+  }
+}

@@ -18,10 +18,23 @@ project/project/
 .bloop/
 *.class
 
-# Python (plus tard)
+# Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# UV / Python package manager
+uv.lock
 
 # Data Lake (on versionne la structure, pas la donnée)
 data/raw/*
@@ -30,9 +43,14 @@ data/processed/*
 data/external/*
 !data/**/.gitkeep
 
+# ML Models (trop volumineux pour Git)
+ex05_ml_prediction_service/models/*
+!ex05_ml_prediction_service/models/.gitkeep
+
 # Secrets / env
 .env
 .env.*
+!.env.example
 
 # Docker
 *.tar
