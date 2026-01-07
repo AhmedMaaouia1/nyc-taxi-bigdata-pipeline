@@ -1,10 +1,19 @@
 # NYC Taxi Big Data Pipeline
 
+[![Spark](https://img.shields.io/badge/Processing-Apache%20Spark%203.5-E25A1C?style=flat-square&logo=apachespark&logoColor=white)]()
+[![Scala](https://img.shields.io/badge/Language-Scala%202.13-DC322F?style=flat-square&logo=scala&logoColor=white)]()
+[![Python](https://img.shields.io/badge/ML-PySpark%20MLlib-3776AB?style=flat-square&logo=python&logoColor=white)]()
+[![MinIO](https://img.shields.io/badge/Data%20Lake-MinIO%20S3-C72E49?style=flat-square&logo=minio&logoColor=white)]()
+[![PostgreSQL](https://img.shields.io/badge/Data%20Warehouse-PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)]()
+[![Docker](https://img.shields.io/badge/Container-Docker%20Compose-2496ED?style=flat-square&logo=docker&logoColor=white)]()
+[![Airflow](https://img.shields.io/badge/Orchestration-Apache%20Airflow-017CEE?style=flat-square&logo=apacheairflow&logoColor=white)]()
+[![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)]()
+
 Pipeline Big Data complet pour l'analyse des données NYC Taxi, depuis la collecte jusqu'à l'exploitation analytique et le Machine Learning.
 
 Le projet repose sur une **infrastructure Big Data distribuée** basée sur **Spark, MinIO et PostgreSQL**, entièrement orchestrée via **Docker Compose**.
 
-> **Architecture globale** : [Documents/architeture.mmd](Documents/architeture.mmd)
+![Architecture](Documents/Project_Architecture.png)
 
 ---
 
@@ -230,6 +239,22 @@ Orchestration du pipeline complet via Apache Airflow.
 | Ex04 | Dashboard | Terminé |
 | Ex05 | Machine Learning | Terminé |
 | Ex06 | Airflow | En cours |
+
+---
+
+## Stack
+
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apachespark/apachespark-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/scala/scala-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/streamlit/streamlit-original.svg" width="40" height="40"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" width="40" height="40"/>
+</p>
 
 ---
 
