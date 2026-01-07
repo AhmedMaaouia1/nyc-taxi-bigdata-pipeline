@@ -54,3 +54,5 @@ ex05_ml_prediction_service/models/*
 
 # Docker
 *.tar
+
+*.html
