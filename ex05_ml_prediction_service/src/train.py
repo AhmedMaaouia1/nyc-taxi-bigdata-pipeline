@@ -12,6 +12,9 @@ from spark_session import create_spark_session
 from spark_io import read_multi_months
 from features import add_features
 from error_analysis import run_error_analysis
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def main() -> None:
@@ -116,10 +119,10 @@ def main() -> None:
     mae = mae_evaluator.evaluate(predictions)
     r2 = r2_evaluator.evaluate(predictions)
 
-    print("=== Model Evaluation ===")
-    print(f"RMSE : {rmse:.4f}")
-    print(f"MAE  : {mae:.4f}")
-    print(f"R²   : {r2:.4f}")
+    logger.info("=== Model Evaluation ===")
+    logger.info(f"RMSE : {rmse:.4f}")
+    logger.info(f"MAE  : {mae:.4f}")
+    logger.info(f"R²   : {r2:.4f}")
 
     # -------------------------
     # Error Analysis

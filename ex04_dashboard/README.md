@@ -193,6 +193,27 @@ Le dashboard utilise un thème sombre moderne avec :
 
 *Le dashboard affiche les KPIs, graphiques temporels, distribution des paiements et classement des zones.*
 
+---
+
+## Intégration Airflow (EX06)
+
+L'exercice EX04 (Dashboard) n'est **pas orchestré** par Airflow car il s'agit d'une application interactive de visualisation, pas d'un job batch.
+
+Cependant, les données affichées dans le dashboard sont alimentées automatiquement par le pipeline orchestré :
+
+```
+EX01 → EX02 → EX03 → Data Warehouse → Dashboard (EX04)
+         ↓
+        EX05 (ML)
+```
+
+**Dépendance :**
+- Le dashboard lit les données depuis `fact_trip` et les dimensions
+- Ces tables sont alimentées mensuellement par le DAG `full_nyc_taxi_pipeline`
+- Les nouvelles données sont automatiquement visibles dans le dashboard après chaque exécution du pipeline
+
+---
+
 ## Statut
 
 ✅ **Terminé et validé**

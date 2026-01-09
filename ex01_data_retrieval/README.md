@@ -126,6 +126,35 @@ libraryDependencies ++= Seq(
 [INFO] File uploaded to s3a://nyc-raw/yellow/2023/01/
 ```
 
+---
+
+## Intégration Airflow (EX06)
+
+Ce job est orchestré automatiquement par le DAG `full_nyc_taxi_pipeline` :
+
+```python
+ex01_spark_submit = BashOperator(
+    task_id='ex01_spark_submit',
+    bash_command="""
+        docker exec spark-master spark-submit \
+            --class Ex01DataRetrieval \
+            --master spark://spark-master:7077 \
+            /opt/workdir/ex01_data_retrieval/target/scala-2.12/ex01-data-retrieval_2.12-0.1.0.jar \
+            --year {{ execution_date.year }} \
+            --month {{ execution_date.strftime('%m') }}
+    """,
+    sla=timedelta(minutes=30),  # SLA: 30 minutes max
+)
+```
+
+**Caractéristiques :**
+- 📅 Schedule : `@monthly`
+- ⏱️ SLA : 30 minutes
+- 🔄 Retries : 3 (avec 2 min de délai)
+- ✅ Vérification post-exécution : présence des fichiers dans MinIO
+
+---
+
 ## Statut
 
 ✅ **Terminé et validé**

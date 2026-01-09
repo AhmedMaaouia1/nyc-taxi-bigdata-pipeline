@@ -1,0 +1,203 @@
+# ============================================================================
+# AIRFLOW DOCKER COMPOSE - NYC Taxi Big Data Pipeline
+# ============================================================================
+# Ce fichier configure Apache Airflow pour orchestrer le pipeline EX01 → EX05
+# 
+# Architecture:
+#   - PostgreSQL (metadata DB pour Airflow)
+#   - Airflow Webserver (UI)
+#   - Airflow Scheduler (ordonnanceur)
+#
+# Usage:
+#   docker-compose up -d
+#   docker-compose down
+#
+# Accès UI: http://localhost:8080
+# Login: airflow / airflow
+# ============================================================================
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.1-python3.10
+  environment: &airflow-common-env
+    # ========== Airflow Core Configuration ==========
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: 'Europe/Paris'
+    
+    # ========== Database Configuration ==========
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    
+    # ========== Webserver Configuration ==========
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: 'Europe/Paris'
+    
+    # ========== Scheduler Configuration ==========
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    
+    # ========== API Configuration ==========
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    
+    # ========== Variables pour le Pipeline ==========
+    # Ces variables sont utilisées par les DAGs
+    MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    POSTGRES_DB: ${POSTGRES_DB:-nyc_taxi}
+    POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    
+    SPARK_MASTER_URL: spark://spark-master:7077
+    
+  volumes:
+    # DAGs, logs et plugins Airflow
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./scripts:/opt/airflow/scripts
+    
+    # Accès au projet complet (pour spark-submit et scripts)
+    - ${PROJECT_ROOT:-./../}:/opt/workdir
+    
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on: &airflow-common-depends-on
+    airflow-postgres:
+      condition: service_healthy
+
+services:
+  # ==========================================================================
+  # POSTGRESQL - Base de métadonnées Airflow
+  # ==========================================================================
+  airflow-postgres:
+    image: postgres:15
+    container_name: airflow-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - nyc-net
+
+  # ==========================================================================
+  # AIRFLOW WEBSERVER - Interface utilisateur
+  # ==========================================================================
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - nyc-net
+
+  # ==========================================================================
+  # AIRFLOW SCHEDULER - Ordonnanceur des DAGs
+  # ==========================================================================
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - nyc-net
+
+  # ==========================================================================
+  # AIRFLOW INIT - Initialisation (migrations DB + création admin)
+  # ==========================================================================
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # Initialisation de la DB Airflow
+        airflow db init
+        
+        # Création de l'utilisateur admin
+        airflow users create \
+          --username airflow \
+          --firstname Airflow \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com \
+          --password airflow || true
+        
+        # Vérification des DAGs
+        airflow dags list
+        
+        echo "============================================"
+        echo "Airflow initialized successfully!"
+        echo "Access UI at: http://localhost:8080"
+        echo "Login: airflow / airflow"
+        echo "============================================"
+    user: "0:0"
+    networks:
+      - nyc-net
+
+  # ==========================================================================
+  # AIRFLOW CLI - Outil en ligne de commande (optionnel)
+  # ==========================================================================
+  airflow-cli:
+    <<: *airflow-common
+    container_name: airflow-cli
+    profiles:
+      - debug
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    command:
+      - bash
+      - -c
+      - airflow
+    networks:
+      - nyc-net
+
+# ==========================================================================
+# VOLUMES
+# ==========================================================================
+volumes:
+  airflow-postgres-db-volume:
+    name: airflow-postgres-db
+
+# ==========================================================================
+# NETWORKS
+# ==========================================================================
+# Utilise le réseau existant du projet principal
+networks:
+  nyc-net:
+    external: true
+    name: nyc-net

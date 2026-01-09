@@ -174,6 +174,40 @@ spark-submit \
 [INFO] EX02 finished OK.
 ```
 
+---
+
+## Intégration Airflow (EX06)
+
+Ce job est orchestré automatiquement par le DAG `full_nyc_taxi_pipeline` :
+
+```python
+ex02_spark_submit = BashOperator(
+    task_id='ex02_spark_submit',
+    bash_command="""
+        docker exec spark-master spark-submit \
+            --class Ex02DataIngestion \
+            --master spark://spark-master:7077 \
+            --jars /opt/spark/jars/postgresql-42.7.4.jar \
+            /opt/workdir/ex02_data_ingestion/target/scala-2.12/ex02-data-ingestion_2.12-0.1.0.jar \
+            --year {{ execution_date.year }} \
+            --month {{ execution_date.strftime('%m') }} \
+            --enableDw true
+    """,
+    sla=timedelta(hours=1, minutes=30),  # SLA: 1h30 max
+)
+```
+
+**Caractéristiques :**
+- 📅 Schedule : `@monthly`
+- ⏱️ SLA : 1h30
+- 🔄 Retries : 3 (avec 2 min de délai)
+- ✅ Vérification post-exécution :
+  - Branch 1 : présence des fichiers dans MinIO interim
+  - Branch 2 : comptage des lignes dans staging PostgreSQL
+- 📊 Quality check : vérification de la rétention des données (seuil 80%)
+
+---
+
 ## Statut
 
 ✅ **Terminé et validé**

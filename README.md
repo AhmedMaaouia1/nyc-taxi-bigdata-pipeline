@@ -226,19 +226,25 @@ Service de prédiction ML pour l'estimation des tarifs de courses.
 
 Orchestration du pipeline complet via Apache Airflow.
 
+- DAG principal : `full_nyc_taxi_pipeline`
+- Schedule : `@monthly` avec backfill activé
+- SLA sur tâches critiques
+- Vérification qualité inter-étapes (seuil 80%)
+- Tests unitaires des DAGs
+
 ---
 
 ## État du projet
 
 | Exercice | Description | Statut |
 |----------|-------------|--------|
-| Infrastructure | Docker Spark/MinIO/PostgreSQL | Terminé |
-| Ex01 | Data Retrieval | Terminé |
-| Ex02 | Data Ingestion | Terminé |
-| Ex03 | SQL Table Creation | Terminé |
-| Ex04 | Dashboard | Terminé |
-| Ex05 | Machine Learning | Terminé |
-| Ex06 | Airflow | En cours |
+| Infrastructure | Docker Spark/MinIO/PostgreSQL | ✅ Terminé |
+| Ex01 | Data Retrieval | ✅ Terminé |
+| Ex02 | Data Ingestion | ✅ Terminé |
+| Ex03 | SQL Table Creation | ✅ Terminé |
+| Ex04 | Dashboard | ✅ Terminé |
+| Ex05 | Machine Learning | ✅ Terminé |
+| Ex06 | Airflow Orchestration | ✅ Terminé |
 
 ---
 

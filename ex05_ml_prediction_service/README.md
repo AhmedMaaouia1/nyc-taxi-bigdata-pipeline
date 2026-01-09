@@ -213,6 +213,7 @@ ex05_ml_prediction_service/
 │   ├── eda.py              # Exploration des données
 │   ├── error_analysis.py   # Analyse d'erreurs post-prédiction
 │   ├── features.py         # Feature engineering
+│   ├── logging_config.py   # Configuration logging centralisée ✨
 │   ├── ml_pipeline.py      # Pipeline ML orchestrable (sliding window)
 │   ├── model_registry.py   # Gestion du model registry
 │   ├── predict.py          # Module d'inférence
@@ -228,12 +229,6 @@ ex05_ml_prediction_service/
     ├── test_ml_quality.py       # Tests qualité modèle
     ├── test_ml_schema.py        # Tests schéma ML
     ├── test_model_registry.py   # Tests model registry
-    ├── test_month_range.py      # Tests plage de mois
-    └── test_validation.py       # Tests validation
-```
-    ├── test_ml_plausibility.py  # Tests plausibilité métier
-    ├── test_ml_quality.py       # Tests qualité modèle
-    ├── test_ml_schema.py        # Tests schéma ML
     ├── test_month_range.py      # Tests plage de mois
     └── test_validation.py       # Tests validation
 ```
@@ -690,6 +685,58 @@ Plusieurs extensions MLOps sont envisageables :
 - 🚀 Déploiement via API ou front-end
 - 📈 Monitoring et détection de dérive
 - 🔧 Hyperparameter tuning automatique
+
+---
+
+## 📋 Logging Structuré
+
+### Configuration Centralisée
+
+Le module `logging_config.py` fournit un système de logging standardisé pour tout le pipeline ML.
+
+### Format des Logs
+
+```
+2024-06-15 14:30:25 | INFO     | src.ml_pipeline            | Pipeline started
+2024-06-15 14:30:26 | INFO     | src.trainer                | Training on 2,500,000 rows
+2024-06-15 14:35:42 | WARNING  | src.ml_pipeline            | Missing data for ['2023/03']
+```
+
+### Utilisation
+
+```python
+from logging_config import get_logger, PipelineLogger
+
+# Logger simple
+logger = get_logger(__name__)
+logger.info("Message")
+logger.warning("Attention")
+logger.error("Erreur")
+
+# Logger avec tracking de métriques
+pipeline_log = PipelineLogger("MLPipeline")
+pipeline_log.stage_start("training", months=["2023/01", "2023/02"])
+# ... training ...
+pipeline_log.stage_end("training", row_count=2500000)
+pipeline_log.verify_retention("load_raw", "after_cleaning", min_threshold=0.80)
+pipeline_log.summary()
+```
+
+### Classes Disponibles
+
+| Classe | Description |
+|--------|-------------|
+| `get_logger(name)` | Logger standard avec format uniforme |
+| `PipelineLogger` | Logger avec tracking de métriques et vérification de rétention |
+| `configure_file_logging()` | Ajoute l'écriture vers fichier |
+
+### Avantages
+
+- ✅ **Timestamps** : Traçabilité temporelle complète
+- ✅ **Niveaux** : INFO, WARNING, ERROR pour filtrage
+- ✅ **Modules** : Identification de la source du log
+- ✅ **Rétention** : Vérification automatique perte de données
+- ✅ **Production-ready** : Compatible avec ELK, CloudWatch, etc.
 
 ---
 

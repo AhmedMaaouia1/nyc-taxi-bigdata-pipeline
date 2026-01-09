@@ -36,6 +36,11 @@ from typing import List, Optional
 # Add src to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from logging_config import get_logger, PipelineLogger
+
+# Module logger
+logger = get_logger(__name__)
+
 from spark_session import create_spark_session
 from spark_io import read_multi_months, validate_months_exist
 from features import add_features
@@ -198,11 +203,11 @@ def format_test_month_path(test_month: str) -> str:
     return format_month_path(year, month)
 
 
-def print_banner(title: str) -> None:
-    """Print a banner for visibility."""
-    print("\n" + "=" * 60)
-    print(f"  {title}")
-    print("=" * 60 + "\n")
+def log_banner(title: str) -> None:
+    """Log a banner for visibility."""
+    logger.info("=" * 60)
+    logger.info(f"  {title}")
+    logger.info("=" * 60)
 
 
 def run_pipeline(
@@ -236,39 +241,42 @@ def run_pipeline(
     dict
         Pipeline execution result
     """
-    print_banner("ML PIPELINE STARTED")
-    print(f"Training months: {train_months}")
-    print(f"Test month: {test_month}")
-    print(f"Registry path: {registry_path}")
-    print(f"Skip missing data: {skip_missing}")
+    log_banner("ML PIPELINE STARTED")
+    logger.info(f"Training months: {train_months}")
+    logger.info(f"Test month: {test_month}")
+    logger.info(f"Registry path: {registry_path}")
+    logger.info(f"Skip missing data: {skip_missing}")
+    
+    # Initialize pipeline logger for metrics tracking
+    pipeline_log = PipelineLogger("MLPipeline")
     
     start_time = datetime.utcnow()
     
     # Initialize registry
     registry = ModelRegistry(registry_path)
-    print(f"\nRegistry status: {json.dumps(registry.get_registry_summary(), indent=2)}")
+    logger.info(f"Registry status: {json.dumps(registry.get_registry_summary(), indent=2)}")
     
     # Create Spark session
-    print_banner("INITIALIZING SPARK")
+    log_banner("INITIALIZING SPARK")
     spark = create_spark_session("EX05-ML-Pipeline")
     
     try:
         # =====================
         # VALIDATE DATA EXISTS
         # =====================
-        print_banner("VALIDATING DATA AVAILABILITY")
+        log_banner("VALIDATING DATA AVAILABILITY")
         
         all_months = train_months + [test_month]
         existing, missing = validate_months_exist(spark, data_base_path, all_months)
         
-        print(f"Requested months: {all_months}")
-        print(f"Available months: {existing}")
-        print(f"Missing months: {missing if missing else 'None'}")
+        logger.info(f"Requested months: {all_months}")
+        logger.info(f"Available months: {existing}")
+        logger.info(f"Missing months: {missing if missing else 'None'}")
         
         if missing:
             if skip_missing:
-                print(f"\n⚠️  WARNING: Missing data for {missing}")
-                print("Continuing with available data only (--skip-missing enabled)")
+                logger.warning(f"Missing data for {missing}")
+                logger.warning("Continuing with available data only (--skip-missing enabled)")
                 
                 # Check if test month is missing → ALWAYS FAIL
                 if test_month not in existing:
@@ -302,8 +310,8 @@ def run_pipeline(
                     )
                 
                 train_months = train_months_available
-                print(f"\n✅ Adjusted training months: {train_months} ({len(train_months)} months)")
-                print(f"✅ Test month: {test_month}")
+                logger.info(f"Adjusted training months: {train_months} ({len(train_months)} months)")
+                logger.info(f"Test month: {test_month}")
             else:
                 # Fail with clear error message
                 raise FileNotFoundError(
@@ -321,26 +329,34 @@ def run_pipeline(
                     f"  python ml_pipeline.py --test-month 2023-05 --skip-missing\n"
                 )
         else:
-            print("✅ All requested months have data available")
+            logger.info("All requested months have data available")
         
         # Load training data
-        print_banner("LOADING TRAINING DATA")
+        log_banner("LOADING TRAINING DATA")
+        pipeline_log.stage_start("load_training", months=train_months)
         train_df = read_multi_months(
             spark, data_base_path, train_months, 
             validate=False  # Already validated above
         )
         train_df = add_features(train_df)
+        train_count = train_df.count()
+        pipeline_log.stage_end("load_training", row_count=train_count)
         
         # Load test data
-        print_banner("LOADING TEST DATA")
+        log_banner("LOADING TEST DATA")
+        pipeline_log.stage_start("load_test", month=test_month)
         test_df = read_multi_months(
             spark, data_base_path, [test_month],
             validate=False  # Already validated above
         )
         test_df = add_features(test_df)
+        test_count = test_df.count()
+        pipeline_log.stage_end("load_test", row_count=test_count)
         
         # Train candidate model
-        print_banner("TRAINING CANDIDATE MODEL")
+        log_banner("TRAINING CANDIDATE MODEL")
+        pipeline_log.stage_start("training")
+        pipeline_log.stage_start("training")
         training_result = train_model(
             spark=spark,
             train_df=train_df,
@@ -348,6 +364,7 @@ def run_pipeline(
             train_months=train_months,
             test_month=test_month,
         )
+        pipeline_log.stage_end("training", row_count=training_result.train_rows)
         
         # Save candidate model
         candidate_path = registry.get_candidate_model_path()
@@ -363,39 +380,42 @@ def run_pipeline(
         )
         
         # Compare with current model
-        print_banner("MODEL COMPARISON & PROMOTION DECISION")
+        log_banner("MODEL COMPARISON & PROMOTION DECISION")
         decision = registry.compare_models()
         
-        print(f"Should promote: {decision.should_promote}")
-        print(f"Metrics improved: {decision.metrics_improved}")
-        print(f"Improvement count: {decision.improvement_count}/3")
-        print(f"Reason: {decision.reason}")
+        logger.info(f"Should promote: {decision.should_promote}")
+        logger.info(f"Metrics improved: {decision.metrics_improved}")
+        logger.info(f"Improvement count: {decision.improvement_count}/3")
+        logger.info(f"Reason: {decision.reason}")
         
         if decision.current_metrics:
-            print(f"\nCurrent model metrics:")
-            print(f"  RMSE: {decision.current_metrics.rmse:.4f}")
-            print(f"  MAE:  {decision.current_metrics.mae:.4f}")
-            print(f"  R²:   {decision.current_metrics.r2:.4f}")
+            logger.info("Current model metrics:")
+            logger.info(f"  RMSE: {decision.current_metrics.rmse:.4f}")
+            logger.info(f"  MAE:  {decision.current_metrics.mae:.4f}")
+            logger.info(f"  R²:   {decision.current_metrics.r2:.4f}")
         
-        print(f"\nCandidate model metrics:")
-        print(f"  RMSE: {decision.candidate_metrics.rmse:.4f}")
-        print(f"  MAE:  {decision.candidate_metrics.mae:.4f}")
-        print(f"  R²:   {decision.candidate_metrics.r2:.4f}")
+        logger.info("Candidate model metrics:")
+        logger.info(f"  RMSE: {decision.candidate_metrics.rmse:.4f}")
+        logger.info(f"  MAE:  {decision.candidate_metrics.mae:.4f}")
+        logger.info(f"  R²:   {decision.candidate_metrics.r2:.4f}")
         
         # Execute promotion decision
         if decision.should_promote:
-            print_banner("PROMOTING CANDIDATE MODEL")
+            log_banner("PROMOTING CANDIDATE MODEL")
             registry.promote_candidate()
-            print("✅ Candidate promoted to current!")
+            logger.info("Candidate promoted to current!")
         else:
-            print_banner("KEEPING CURRENT MODEL")
+            log_banner("KEEPING CURRENT MODEL")
             registry.discard_candidate()
-            print("❌ Candidate discarded - current model retained")
+            logger.info("Candidate discarded - current model retained")
         
         # Run error analysis on test predictions
-        print_banner("ERROR ANALYSIS")
+        log_banner("ERROR ANALYSIS")
+        pipeline_log.stage_start("error_analysis")
         predictions = training_result.model.transform(test_df)
+        predictions_count = predictions.count()
         error_analysis_results = run_error_analysis(predictions, reports_dir)
+        pipeline_log.stage_end("error_analysis", row_count=predictions_count)
         
         # Generate report
         promotion_info = {
@@ -429,9 +449,12 @@ def run_pipeline(
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         
-        print_banner("PIPELINE COMPLETED")
-        print(f"Duration: {(datetime.utcnow() - start_time).total_seconds():.1f}s")
-        print(f"Final registry status: {json.dumps(registry.get_registry_summary(), indent=2)}")
+        # Log pipeline summary with retention checks
+        pipeline_log.summary()
+        
+        log_banner("PIPELINE COMPLETED")
+        logger.info(f"Duration: {(datetime.utcnow() - start_time).total_seconds():.1f}s")
+        logger.info(f"Final registry status: {json.dumps(registry.get_registry_summary(), indent=2)}")
         
         return {
             "status": "success",
@@ -457,18 +480,18 @@ def main() -> None:
     test_month = args.test_month
     if test_month is None:
         test_month = get_current_test_month()
-        print(f"[AUTO-DETECT] Using current month as test month: {test_month}")
+        logger.info(f"[AUTO-DETECT] Using current month as test month: {test_month}")
     
     # Parse/compute training months
     train_months = parse_train_months(args.train_months, test_month)
     test_month_path = format_test_month_path(test_month)
     
-    print(f"Resolved training months: {train_months}")
-    print(f"Resolved test month: {test_month_path}")
+    logger.info(f"Resolved training months: {train_months}")
+    logger.info(f"Resolved test month: {test_month_path}")
     
     if args.dry_run:
-        print("\n[DRY RUN] Would execute pipeline with above parameters")
-        print("Validating data availability...")
+        logger.info("[DRY RUN] Would execute pipeline with above parameters")
+        logger.info("Validating data availability...")
         
         # Quick validation without full pipeline
         from spark_session import create_spark_session
@@ -476,22 +499,22 @@ def main() -> None:
         try:
             all_months = train_months + [test_month_path]
             existing, missing = validate_months_exist(spark, args.data_base_path, all_months)
-            print(f"\n{'=' * 50}")
-            print(f"DATA AVAILABILITY CHECK")
-            print(f"{'=' * 50}")
-            print(f"Base path: {args.data_base_path}")
-            print(f"Requested: {all_months}")
-            print(f"Available: {existing if existing else 'None'}")
-            print(f"Missing:   {missing if missing else 'None'}")
+            logger.info("=" * 50)
+            logger.info("DATA AVAILABILITY CHECK")
+            logger.info("=" * 50)
+            logger.info(f"Base path: {args.data_base_path}")
+            logger.info(f"Requested: {all_months}")
+            logger.info(f"Available: {existing if existing else 'None'}")
+            logger.info(f"Missing:   {missing if missing else 'None'}")
             
             if missing:
-                print(f"\n⚠️  Some data is missing!")
+                logger.warning("Some data is missing!")
                 if args.skip_missing:
-                    print("   --skip-missing is enabled, pipeline would continue with available data")
+                    logger.info("   --skip-missing is enabled, pipeline would continue with available data")
                 else:
-                    print("   Pipeline would FAIL. Use --skip-missing to continue anyway.")
+                    logger.warning("   Pipeline would FAIL. Use --skip-missing to continue anyway.")
             else:
-                print(f"\n✅ All data available. Pipeline ready to run.")
+                logger.info("All data available. Pipeline ready to run.")
         finally:
             spark.stop()
         return
@@ -513,7 +536,7 @@ def main() -> None:
             sys.exit(1)
             
     except FileNotFoundError as e:
-        print(f"\n{e}")
+        logger.error(f"{e}")
         sys.exit(2)  # Special exit code for missing data
 
 

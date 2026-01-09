@@ -1,261 +1,460 @@
 # Exercice 06 – Orchestration Airflow
 
-## Objectif
+## 🎯 Objectif
 
-L'exercice **EX06** a pour objectif de mettre en place l'**orchestration automatisée** de l'ensemble du pipeline Big Data à l'aide d'**Apache Airflow**.
+L'exercice **EX06** met en place **Apache Airflow** pour orchestrer automatiquement le pipeline Big Data complet (EX01 → EX05) de manière **mensuelle**, **idempotente** et **rattrapable** (backfill).
 
-## Architecture cible
+### ✨ Qualité et Monitoring (v2)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AIRFLOW                                  │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    DAG: nyc_taxi_pipeline                │  │
-│  │                                                          │  │
-│  │  ┌────────┐    ┌────────┐    ┌────────┐    ┌────────┐  │  │
-│  │  │  EX01  │───▶│  EX02  │───▶│  EX03  │───▶│  EX04  │  │  │
-│  │  │Retrieve│    │Ingest  │    │  DW    │    │  BI    │  │  │
-│  │  └────────┘    └────────┘    └────────┘    └────────┘  │  │
-│  │                     │                                    │  │
-│  │                     ▼                                    │  │
-│  │               ┌────────┐                                 │  │
-│  │               │  EX05  │                                 │  │
-│  │               │   ML   │                                 │  │
-│  │               └────────┘                                 │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+- **SLA** sur les tâches critiques (alertes si dépassement)
+- **Vérification de comptage inter-étapes** (seuil 80% minimum)
+- **Logging structuré** (timestamps, niveaux, traçabilité)
+- **Tests unitaires DAGs** (validation structure et dépendances)
 
-## Composants Airflow
+---
 
-### Infrastructure
-
-| Composant        | Description                              |
-|------------------|------------------------------------------|
-| Airflow Webserver| Interface web (port 8080)                |
-| Airflow Scheduler| Planification des DAGs                   |
-| Airflow Worker   | Exécution des tâches                     |
-| PostgreSQL       | Backend metadata Airflow                 |
-| Redis            | Message broker (CeleryExecutor)          |
-
-### DAG principal
-
-Le DAG `nyc_taxi_pipeline` orchestre l'ensemble du pipeline :
+## 📐 Architecture
 
 ```
-ex01_data_retrieval
-        │
-        ▼
-ex02_data_ingestion
-        │
-   ┌────┴────┐
-   ▼         ▼
-ex03_dw   ex05_ml
-   │
-   ▼
-ex04_dashboard_refresh
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           AIRFLOW                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                    full_nyc_taxi_pipeline                        │   │
+│  │                     (DAG Principal)                              │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│         │                                                               │
+│         ▼                                                               │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │   EX01      │     │   EX02      │     │   EX03      │              │
+│  │ Retrieval   │────►│ Ingestion   │────►│  DW Load    │              │
+│  │             │     │             │     │             │              │
+│  └─────────────┘     └──────┬──────┘     └─────────────┘              │
+│                             │                                          │
+│                             │  ┌─────────────┐                        │
+│                             └─►│   EX05      │                        │
+│                                │  ML/MLOps   │                        │
+│                                └─────────────┘                        │
+└─────────────────────────────────────────────────────────────────────────┘
+         │                    │                    │
+         ▼                    ▼                    ▼
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   MinIO     │      │ PostgreSQL  │      │   Spark     │
+│  (S3A)      │      │   (DW)      │      │  Cluster    │
+└─────────────┘      └─────────────┘      └─────────────┘
 ```
 
-## Structure du projet (à implémenter)
+---
+
+## 🗂️ Structure du Projet
 
 ```
 ex06_airflow/
+├── docker-compose.yml          # Configuration Airflow Docker
+├── .env.example                # Variables d'environnement (template)
+├── README.md                   # Ce fichier
+├── pytest.ini                  # Configuration tests
 ├── dags/
-│   ├── nyc_taxi_pipeline.py      # DAG principal
-│   ├── ex01_dag.py               # DAG EX01
-│   ├── ex02_dag.py               # DAG EX02
-│   └── common/
-│       ├── spark_submit.py       # Helper spark-submit
-│       └── config.py             # Configuration
-├── plugins/
-│   └── operators/
-│       └── spark_submit_operator.py
-├── docker-compose.airflow.yml    # Docker Compose Airflow
-├── .env                          # Variables d'environnement
-└── README.md
+│   ├── ex01_data_retrieval_dag.py    # DAG EX01 (standalone)
+│   ├── ex02_data_ingestion_dag.py    # DAG EX02 (standalone)
+│   ├── ex03_dw_dag.py                # DAG EX03 (standalone)
+│   ├── ex05_ml_dag.py                # DAG EX05 (standalone)
+│   └── full_pipeline_dag.py          # DAG COMPLET (recommandé, avec SLA)
+├── tests/
+│   ├── __init__.py
+│   └── test_dags.py            # Tests unitaires DAGs
+├── logs/                       # Logs Airflow
+├── plugins/                    # Plugins custom (vide)
+└── scripts/                    # Scripts auxiliaires
 ```
 
-## Configuration
+---
 
-### Variables Airflow
+## 🚀 Démarrage Rapide
 
-| Variable              | Description                    |
-|-----------------------|--------------------------------|
-| `spark_master_url`    | URL Spark Master               |
-| `minio_endpoint`      | URL MinIO                      |
-| `postgres_conn_id`    | Connection ID PostgreSQL       |
-| `default_year`        | Année par défaut               |
-| `default_month`       | Mois par défaut                |
+### 1. Prérequis
 
-### Connections
+- Docker & Docker Compose installés
+- Infrastructure principale démarrée (depuis la racine du projet) :
+  ```bash
+  docker-compose up -d
+  ```
 
-| Connection ID   | Type       | Description           |
-|-----------------|------------|-----------------------|
-| `spark_default` | Spark      | Cluster Spark         |
-| `postgres_dw`   | PostgreSQL | Data Warehouse        |
-| `minio_s3`      | S3         | MinIO Data Lake       |
+### 2. Configuration
 
-## Types de tâches
+```bash
+cd ex06_airflow
 
-### SparkSubmitOperator
+# Copier et adapter les variables
+cp .env.example .env
 
-Pour les jobs Spark (EX01, EX02, EX05) :
-
-```python
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
-
-ex01_task = SparkSubmitOperator(
-    task_id='ex01_data_retrieval',
-    application='/opt/workdir/ex01_data_retrieval/target/scala-2.12/ex01-data-retrieval_2.12-0.1.0.jar',
-    conn_id='spark_default',
-    java_class='Ex01DataRetrieval',
-    application_args=['--year', '{{ ds[:4] }}', '--month', '{{ ds[5:7] }}'],
-)
+# Créer l'utilisateur Airflow (Linux/Mac)
+echo "AIRFLOW_UID=$(id -u)" >> .env
 ```
 
-### PostgresOperator
-
-Pour les scripts SQL (EX03) :
-
-```python
-from airflow.providers.postgres.operators.postgres import PostgresOperator
-
-ex03_load = PostgresOperator(
-    task_id='ex03_dw_load',
-    postgres_conn_id='postgres_dw',
-    sql='dw_load_incremental.sql',
-)
-```
-
-### BashOperator
-
-Pour les scripts Python (EX05) :
-
-```python
-from airflow.operators.bash import BashOperator
-
-ex05_train = BashOperator(
-    task_id='ex05_ml_train',
-    bash_command='docker exec spark-master spark-submit ... main.py --mode train',
-)
-```
-
-## Scheduling
-
-| DAG                  | Schedule       | Description              |
-|----------------------|----------------|--------------------------|
-| nyc_taxi_monthly     | `0 0 1 * *`    | 1er jour de chaque mois  |
-| nyc_taxi_daily       | `0 6 * * *`    | Tous les jours à 6h      |
-| nyc_taxi_manual      | `None`         | Déclenchement manuel     |
-
-## Paramètres du DAG
-
-```python
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'email_on_failure': True,
-    'email_on_retry': False,
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5),
-    'start_date': datetime(2023, 1, 1),
-}
-
-dag = DAG(
-    'nyc_taxi_pipeline',
-    default_args=default_args,
-    description='NYC Taxi Big Data Pipeline',
-    schedule_interval='@monthly',
-    catchup=False,
-    tags=['nyc-taxi', 'bigdata'],
-)
-```
-
-## Docker Compose
-
-```yaml
-# docker-compose.airflow.yml
-version: '3.8'
-
-services:
-  airflow-webserver:
-    image: apache/airflow:2.7.0
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://...
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./plugins:/opt/airflow/plugins
-
-  airflow-scheduler:
-    image: apache/airflow:2.7.0
-    # ...
-
-  airflow-worker:
-    image: apache/airflow:2.7.0
-    # ...
-```
-
-## Monitoring
-
-### Interface Web
-
-- **URL** : http://localhost:8080
-- **Credentials** : airflow / airflow (par défaut)
-
-### Fonctionnalités
-
-- 📊 Vue des DAGs et leur statut
-- 📈 Graphiques d'exécution
-- 📋 Logs des tâches
-- 🔔 Alertes en cas d'échec
-- 📅 Historique des runs
-
-## Commandes utiles
+### 3. Lancement Airflow
 
 ```bash
 # Démarrer Airflow
-docker compose -f docker-compose.airflow.yml up -d
+docker-compose up -d
 
-# Tester un DAG
-airflow dags test nyc_taxi_pipeline 2023-01-01
-
-# Lister les DAGs
-airflow dags list
-
-# Déclencher un DAG manuellement
-airflow dags trigger nyc_taxi_pipeline
-
-# Voir les logs
-docker compose -f docker-compose.airflow.yml logs -f airflow-scheduler
+# Vérifier les logs d'initialisation
+docker-compose logs -f airflow-init
 ```
 
-## Dépendances
+### 4. Accès à l'Interface
+
+- **URL** : http://localhost:8080
+- **Login** : `airflow`
+- **Password** : `airflow`
+
+---
+
+## 📋 Description des DAGs
+
+### 🔹 `full_nyc_taxi_pipeline` (Recommandé)
+
+**DAG principal qui orchestre tout le pipeline en une seule exécution.**
+
+| Propriété | Valeur |
+|-----------|--------|
+| Schedule | `@monthly` |
+| Start Date | 2023-01-01 |
+| Catchup | ✅ Activé |
+| Max Active Runs | 1 |
+
+**Flux d'exécution :**
+```
+start → log_params → check_source
+                          │
+                          ▼
+                    ┌─── EX01 ───┐
+                    │            │
+                    ▼            │
+              ┌─── EX02 ───┐    │
+              │            │    │
+         Branch 1    Branch 2   │
+              │            │    │
+              │            ▼    │
+              │         EX03    │
+              │            │    │
+              ▼            │    │
+            EX05 ◄─────────┘    │
+              │                 │
+              ▼                 │
+         pipeline_success ◄────┘
+```
+
+### 🔹 DAGs Individuels (Alternative)
+
+Pour un contrôle plus fin, des DAGs individuels sont disponibles :
+
+| DAG | Description | Dépendance |
+|-----|-------------|------------|
+| `ex01_data_retrieval` | Téléchargement + Upload MinIO | Aucune |
+| `ex02_data_ingestion` | Nettoyage + Double branche | EX01 |
+| `ex03_dw_loading` | Chargement Data Warehouse | EX02 |
+| `ex05_ml_pipeline` | ML avec fenêtre glissante | EX02 |
+
+---
+
+## ⚙️ Configuration Technique
+
+### Paramètres d'Orchestration
+
+```python
+# Période couverte
+start_date = datetime(2023, 1, 1)
+end_date = datetime(2024, 12, 31)
+
+# Fréquence
+schedule_interval = '@monthly'
+
+# Backfill activé
+catchup = True
+
+# Un seul run à la fois
+max_active_runs = 1
+```
+
+### Variables d'Environnement
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `MINIO_ENDPOINT` | Endpoint MinIO | `minio:9000` |
+| `MINIO_ROOT_USER` | User MinIO | `minioadmin` |
+| `MINIO_ROOT_PASSWORD` | Password MinIO | `minioadmin` |
+| `POSTGRES_HOST` | Host PostgreSQL | `postgres` |
+| `POSTGRES_DB` | Base de données | `nyc_taxi` |
+| `SPARK_MASTER_URL` | URL Spark Master | `spark://spark-master:7077` |
+
+---
+
+## 🔄 Idempotence
+
+Chaque exercice garantit l'idempotence :
+
+| Exercice | Stratégie |
+|----------|-----------|
+| **EX01** | Skip si fichier existe + `overwrite` sur MinIO |
+| **EX02** | `overwrite` sur partitions MinIO + `truncate` staging |
+| **EX03** | `ON CONFLICT DO NOTHING` sur toutes les tables |
+| **EX05** | Modèle "candidate" + promotion conditionnelle |
+
+**Conséquence** : Le même mois peut être rejoué sans créer de doublons.
+
+---
+
+## 🔙 Backfill (Rattrapage)
+
+### Via l'UI Airflow
+
+1. Ouvrir le DAG `full_nyc_taxi_pipeline`
+2. Cliquer sur le calendrier (icône)
+3. Sélectionner les dates à rejouer
+4. Trigger le DAG
+
+### Via CLI
+
+```bash
+# Backfill janvier à mars 2023
+docker exec airflow-scheduler airflow dags backfill \
+  --start-date 2023-01-01 \
+  --end-date 2023-03-31 \
+  full_nyc_taxi_pipeline
+```
+
+---
+
+## 📊 Fenêtre Glissante ML (EX05)
+
+Le pipeline ML utilise une stratégie de **fenêtre glissante** :
 
 ```
-apache-airflow==2.7.0
-apache-airflow-providers-apache-spark
-apache-airflow-providers-postgres
-apache-airflow-providers-amazon  # Pour S3/MinIO
+Mois traité : M (ex: Juin 2023)
+
+┌───────────────────────────────────────────────────────┐
+│   TRAINING (3 mois)              │   TEST (1 mois)   │
+│   M-3     M-2     M-1            │        M          │
+│  Mars    Avril    Mai            │      Juin         │
+└───────────────────────────────────────────────────────┘
 ```
 
-## Prochaines étapes
+### Règle de Promotion du Modèle
 
-1. [ ] Créer le fichier `docker-compose.airflow.yml`
-2. [ ] Implémenter le DAG principal
-3. [ ] Configurer les connections Airflow
-4. [ ] Tester chaque tâche individuellement
-5. [ ] Mettre en place les alertes
-6. [ ] Documenter les procédures de recovery
+Le nouveau modèle est promu si **au moins 2 métriques sur 3 s'améliorent** :
 
-## Statut
+| Métrique | Direction |
+|----------|-----------|
+| RMSE | ↓ Plus bas = meilleur |
+| MAE | ↓ Plus bas = meilleur |
+| R² | ↑ Plus haut = meilleur |
 
-⏳ **À implémenter**
+---
+
+## �️ Qualité et Monitoring
+
+### SLA (Service Level Agreements)
+
+Des SLA sont configurés sur les tâches critiques pour détecter les exécutions anormalement longues :
+
+| Tâche | SLA | Description |
+|-------|-----|-------------|
+| `ex01_spark_submit` | 30 min | Download + upload MinIO |
+| `ex02_spark_submit` | 1h30 | Nettoyage Spark + double branche |
+| `ex03_load_fact_trip` | 1h | Chargement fact table |
+| `ex05_run_ml_pipeline` | 2h30 | Training + évaluation ML |
+
+**En cas de dépassement SLA :**
+- Logs d'alerte dans Airflow
+- Callback `sla_miss_callback` déclenché
+- (Optionnel) Configuration d'alertes email
+
+### Vérification Comptage Inter-Étapes
+
+Une vérification automatique s'assure que les données ne sont pas perdues entre les étapes :
+
+```
+Seuils de rétention :
+┌──────────────────────────────────────────┐
+│  < 80%  │  ❌ FAIL  │ Perte critique     │
+│  < 90%  │  ⚠️ WARN │ Alerte mais continue│
+│  >= 90% │  ✅ OK    │ Rétention normale  │
+└──────────────────────────────────────────┘
+```
+
+**Tâche concernée :** `ex02_quality_check_retention`
+
+### Tests Unitaires DAGs
+
+Des tests automatiques valident la structure des DAGs :
+
+```bash
+# Exécuter les tests
+cd ex06_airflow
+pytest tests/test_dags.py -v
+```
+
+**Tests inclus :**
+- ✅ Chargement des DAGs sans erreur
+- ✅ Présence de toutes les tâches critiques
+- ✅ Absence de cycles
+- ✅ Configuration SLA
+- ✅ Dépendances correctes
+- ✅ Schedule mensuel
+
+---
+
+## �🛠️ Dépannage
+
+### Problème : Airflow ne démarre pas
+
+```bash
+# Vérifier les logs
+docker-compose logs airflow-init
+docker-compose logs airflow-scheduler
+
+# Réinitialiser
+docker-compose down -v
+docker-compose up -d
+```
+
+### Problème : DAG non visible
+
+```bash
+# Forcer le parsing des DAGs
+docker exec airflow-scheduler airflow dags list
+
+# Vérifier les erreurs de syntaxe
+docker exec airflow-scheduler python /opt/airflow/dags/full_pipeline_dag.py
+```
+
+### Problème : Task en échec
+
+1. Ouvrir l'UI Airflow
+2. Cliquer sur la tâche en échec
+3. Consulter les logs
+4. Corriger et "Clear" la tâche pour relancer
+
+---
+
+## 📝 Justification des Choix
+
+### Pourquoi un DAG unique plutôt que plusieurs ?
+
+| Critère | DAG Unique | Multi-DAGs |
+|---------|------------|------------|
+| **Lisibilité** | ✅ Vue globale | ⚠️ Dispersé |
+| **Backfill** | ✅ Simple | ⚠️ Complexe |
+| **Dépendances** | ✅ Explicites | ⚠️ ExternalTaskSensor |
+| **Présentation** | ✅ Idéal jury | ⚠️ Plus complexe |
+
+**Choix : DAG unique (`full_nyc_taxi_pipeline`)** pour la clarté et la simplicité d'utilisation.
+
+### Pourquoi BashOperator plutôt que DockerOperator ?
+
+- `spark-submit` doit s'exécuter depuis le conteneur Spark Master
+- `docker exec` permet d'utiliser l'infrastructure existante
+- Pas besoin de Docker-in-Docker (complexité réduite)
+
+---
+
+## 🎓 Comment Expliquer Airflow au Prof
+
+### Définition Simple
+
+> **Airflow** est un orchestrateur de workflows. Il permet de définir, planifier et surveiller des pipelines de données sous forme de **DAGs** (Directed Acyclic Graphs).
+
+### Points Clés à Mentionner
+
+1. **DAG** = Graphe de tâches avec dépendances
+2. **Schedule** = Planification automatique (`@monthly`)
+3. **Catchup** = Capacité à rejouer le passé (backfill)
+4. **Idempotence** = Rejouer sans créer de doublons
+5. **Monitoring** = Interface web pour suivre les exécutions
+
+### Schéma pour le Jury
+
+```
+                   ┌────────────────┐
+   Planificateur   │   SCHEDULER    │
+                   └───────┬────────┘
+                           │
+                           ▼
+                   ┌────────────────┐
+   Définition      │     DAGs       │  ← Python
+                   └───────┬────────┘
+                           │
+                           ▼
+                   ┌────────────────┐
+   Exécution       │    WORKERS     │  ← spark-submit, psql, etc.
+                   └───────┬────────┘
+                           │
+                           ▼
+                   ┌────────────────┐
+   Monitoring      │   WEBSERVER    │  ← http://localhost:8080
+                   └────────────────┘
+```
+
+### Vocabulaire à Maîtriser
+
+| Terme | Définition |
+|-------|------------|
+| **DAG** | Directed Acyclic Graph - graphe orienté sans cycle |
+| **Task** | Une étape du workflow (spark-submit, requête SQL...) |
+| **Operator** | Type de tâche (BashOperator, PythonOperator...) |
+| **Sensor** | Tâche qui attend une condition |
+| **XCom** | Échange de données entre tâches |
+| **Backfill** | Exécution rétroactive sur des dates passées |
+
+---
+
+## 📊 Composants Airflow
+
+### Infrastructure Docker
+
+| Composant        | Description                              | Port |
+|------------------|------------------------------------------|------|
+| Airflow Webserver| Interface web de monitoring              | 8080 |
+| Airflow Scheduler| Planification et déclenchement des DAGs  | -    |
+| Airflow Postgres | Base de métadonnées Airflow              | -    |
+
+### Opérateurs Utilisés
+
+| Opérateur | Usage |
+|-----------|-------|
+| `BashOperator` | Exécution de commandes shell (spark-submit, psql) |
+| `PythonOperator` | Exécution de fonctions Python |
+| `ShortCircuitOperator` | Skip conditionnel des tâches suivantes |
+| `ExternalTaskSensor` | Attente de tâches d'autres DAGs |
+| `EmptyOperator` | Points de synchronisation |
+
+---
+
+## ✅ Checklist Validation
+
+- [ ] Infrastructure principale démarrée (`docker-compose up -d` depuis la racine)
+- [ ] Airflow démarré (`docker-compose up -d` depuis ex06_airflow/)
+- [ ] DAG visible dans l'UI (http://localhost:8080)
+- [ ] DAG activé (toggle ON)
+- [ ] Trigger manuel réussi pour un mois
+- [ ] Backfill testé sur plusieurs mois
+- [ ] Logs consultables dans l'UI
+
+---
+
+## 📚 Ressources
+
+- [Documentation Airflow](https://airflow.apache.org/docs/)
+- [Best Practices Airflow](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html)
+- [Tutoriel DAGs](https://airflow.apache.org/docs/apache-airflow/stable/tutorial.html)
+
+---
+
+## 📊 Statut
+
+✅ **Terminé et validé**
 
 ---
 
 **Auteur :** MAAOUIA Ahmed – CY Tech Big Data
+

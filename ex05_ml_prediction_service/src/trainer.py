@@ -8,7 +8,11 @@ Supports:
 """
 from __future__ import annotations
 
+from logging_config import get_logger
+
 from pyspark.ml import Pipeline, PipelineModel
+
+logger = get_logger(__name__)
 from pyspark.ml.feature import VectorAssembler, OneHotEncoder, StringIndexer
 from pyspark.ml.regression import GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
@@ -185,8 +189,8 @@ def train_model(
     train_rows = train_df.count()
     test_rows = test_df.count()
     
-    print(f"Training on {train_rows:,} rows from months: {train_months}")
-    print(f"Testing on {test_rows:,} rows from month: {test_month}")
+    logger.info(f"Training on {train_rows:,} rows from months: {train_months}")
+    logger.info(f"Testing on {test_rows:,} rows from month: {test_month}")
     
     # Build and fit pipeline
     pipeline = build_pipeline()
@@ -197,11 +201,11 @@ def train_model(
     
     duration = time.time() - start_time
     
-    print(f"\n=== Model Evaluation ===")
-    print(f"RMSE : {metrics.rmse:.4f}")
-    print(f"MAE  : {metrics.mae:.4f}")
-    print(f"R²   : {metrics.r2:.4f}")
-    print(f"Duration: {duration:.1f}s")
+    logger.info("=== Model Evaluation ===")
+    logger.info(f"RMSE : {metrics.rmse:.4f}")
+    logger.info(f"MAE  : {metrics.mae:.4f}")
+    logger.info(f"R²   : {metrics.r2:.4f}")
+    logger.info(f"Duration: {duration:.1f}s")
     
     # Uncache
     train_df.unpersist()
@@ -230,7 +234,7 @@ def save_model(model: PipelineModel, path: str) -> None:
         Destination path
     """
     model.write().overwrite().save(path)
-    print(f"Model saved to: {path}")
+    logger.info(f"Model saved to: {path}")
 
 
 def load_model(path: str) -> PipelineModel:
@@ -331,6 +335,6 @@ def generate_training_report(
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
     
-    print(f"Report saved to: {report_path}")
+    logger.info(f"Report saved to: {report_path}")
     
     return report

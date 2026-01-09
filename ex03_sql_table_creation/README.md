@@ -216,6 +216,42 @@ psql -f indexes.sql
 - ✅ `ON CONFLICT DO NOTHING` pour l'idempotence
 - ✅ Séparation staging / DW
 
+---
+
+## Intégration Airflow (EX06)
+
+Le chargement DW est orchestré automatiquement par le DAG `full_nyc_taxi_pipeline` :
+
+```python
+ex03_load_dimensions = BashOperator(
+    task_id='ex03_load_dimensions',
+    bash_command="""
+        docker exec -i postgres psql -U $POSTGRES_USER -d $POSTGRES_DB << 'EOSQL'
+        -- INSERT INTO dim_vendor, dim_payment_type, dim_ratecode, dim_location, dim_date, dim_time
+        -- FROM yellow_trips_staging ON CONFLICT DO NOTHING
+        EOSQL
+    """,
+)
+
+ex03_load_facts = BashOperator(
+    task_id='ex03_load_fact_trip',
+    bash_command="""
+        docker exec -i postgres psql -U $POSTGRES_USER -d $POSTGRES_DB << 'EOSQL'
+        INSERT INTO fact_trip (...) SELECT ... FROM yellow_trips_staging ON CONFLICT DO NOTHING;
+        EOSQL
+    """,
+    sla=timedelta(hours=1),  # SLA: 1h max
+)
+```
+
+**Caractéristiques :**
+- 📅 Schedule : `@monthly` (après EX02)
+- ⏱️ SLA : 1h pour le chargement fact_trip
+- ✅ Vérification post-exécution : comptage fact_trip (min 1000 lignes)
+- 🔄 Idempotence : `ON CONFLICT DO NOTHING` sur toutes les insertions
+
+---
+
 ## Statut
 
 ✅ **Terminé et validé**
