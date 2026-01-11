@@ -85,7 +85,7 @@ dag = DAG(
     description='Pipeline complet NYC Taxi: EX01 → EX02 → EX03 → EX05 (avec SLA et quality checks)',
     schedule_interval='@monthly',
     start_date=datetime(2023, 1, 1),
-    end_date=datetime(2024, 12, 31),
+    end_date=datetime(2023, 5, 31),  # Janvier à Mai 2023 (5 mois)
     catchup=True,  # Active le backfill
     max_active_runs=1,
     tags=['full-pipeline', 'ex01', 'ex02', 'ex03', 'ex05', 'production', 'sla-monitored'],
@@ -239,9 +239,16 @@ def should_run_ml(**context):
     EX05 démarre à partir d'avril 2023 (besoin de janv-mars pour training).
     """
     execution_date = context['execution_date']
+    # Comparer avec un datetime naive (sans timezone)
     min_date = datetime(2023, 4, 1)
     
-    if execution_date >= min_date:
+    # Convertir execution_date en naive si nécessaire
+    if hasattr(execution_date, 'replace') and execution_date.tzinfo is not None:
+        execution_date_naive = execution_date.replace(tzinfo=None)
+    else:
+        execution_date_naive = execution_date
+    
+    if execution_date_naive >= min_date:
         logger.info(f"✅ ML peut s'exécuter: {execution_date} >= {min_date}")
         return True
     else:
@@ -331,7 +338,16 @@ with dag:
         task_id='ex02_spark_submit',
         bash_command="""
             echo "🚀 EX02 - Data Ingestion (Double Branche)"
-            docker exec spark-master spark-submit \
+            docker exec \
+                -e POSTGRES_HOST=postgres \
+                -e POSTGRES_PORT=5432 \
+                -e POSTGRES_DB=nyc_dw \
+                -e POSTGRES_USER=nyc \
+                -e POSTGRES_PASSWORD=nyc123 \
+                -e MINIO_ENDPOINT=minio:9000 \
+                -e MINIO_ACCESS_KEY=minioadmin \
+                -e MINIO_SECRET_KEY=minioadmin \
+                spark-master spark-submit \
                 --class Ex02DataIngestion \
                 --master spark://spark-master:7077 \
                 --deploy-mode client \
@@ -362,7 +378,7 @@ with dag:
         task_id='ex02_verify_postgres_staging',
         bash_command="""
             echo "🔍 Vérification Branch 2 (PostgreSQL staging)..."
-            STAGING_COUNT=$(docker exec postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nyc_taxi} -t -c \
+            STAGING_COUNT=$(docker exec postgres psql -U nyc -d nyc_dw -t -c \
                 "SELECT COUNT(*) FROM yellow_trips_staging;")
             echo "Staging count: $STAGING_COUNT"
             # Output count for XCom
@@ -379,7 +395,7 @@ with dag:
             echo "📊 EX02 Quality Check - Vérification rétention données..."
             
             # Get staging count
-            STAGING_COUNT=$(docker exec postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nyc_taxi} -t -c \
+            STAGING_COUNT=$(docker exec postgres psql -U nyc -d nyc_dw -t -c \
                 "SELECT COUNT(*) FROM yellow_trips_staging;" | tr -d ' ')
             
             echo "Staging rows: $STAGING_COUNT"
@@ -411,7 +427,7 @@ with dag:
         task_id='ex03_load_dimensions',
         bash_command="""
             echo "📊 EX03 - Chargement dimensions..."
-            docker exec -i postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nyc_taxi} << 'EOSQL'
+            docker exec -i postgres psql -U nyc -d nyc_dw << 'EOSQL'
             
             INSERT INTO dim_vendor (vendor_id)
             SELECT DISTINCT vendorid FROM yellow_trips_staging WHERE vendorid IS NOT NULL
@@ -461,7 +477,7 @@ EOSQL
         task_id='ex03_load_fact_trip',
         bash_command="""
             echo "📊 EX03 - Chargement fact_trip..."
-            docker exec -i postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nyc_taxi} << 'EOSQL'
+            docker exec -i postgres psql -U nyc -d nyc_dw << 'EOSQL'
             
             INSERT INTO fact_trip (
               pickup_date, pickup_time, pickup_location_id, dropoff_location_id,
@@ -489,11 +505,11 @@ EOSQL
         task_id='ex03_verify_dw',
         bash_command="""
             echo "📊 Vérification DW..."
-            docker exec postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nyc_taxi} -c \
+            docker exec postgres psql -U nyc -d nyc_dw -c \
                 "SELECT 'fact_trip' as tbl, COUNT(*) FROM fact_trip UNION ALL SELECT 'dim_date', COUNT(*) FROM dim_date;"
             
             # Quality check: verify data was loaded
-            FACT_COUNT=$(docker exec postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nyc_taxi} -t -c \
+            FACT_COUNT=$(docker exec postgres psql -U nyc -d nyc_dw -t -c \
                 "SELECT COUNT(*) FROM fact_trip;" | tr -d ' ')
             
             echo "Fact trip count: $FACT_COUNT"
@@ -544,8 +560,8 @@ EOSQL
             docker exec spark-master spark-submit \
                 --master spark://spark-master:7077 \
                 --deploy-mode client \
-                --driver-memory 4g \
-                --executor-memory 4g \
+                --driver-memory 1g \
+                --executor-memory 1g \
                 /opt/workdir/ex05_ml_prediction_service/src/ml_pipeline.py \
                 --test-month "$TEST_MONTH" \
                 --train-months "$TRAIN_MONTHS" \

@@ -1,19 +1,21 @@
 {
   "run_type": "training",
   "model": "GBTRegressor",
-  "timestamp": "2026-01-05T10:30:22.509996",
+  "timestamp": "2026-01-11T20:03:37.709701",
   "data": {
-    "months": [
+    "train_months": [
       "2023/01",
-      "2023/02"
+      "2023/02",
+      "2023/03"
     ],
-    "train_rows": 4623141,
-    "test_rows": 1156796
+    "test_month": "2023/04",
+    "train_rows": 9065096,
+    "test_rows": 3166641
   },
   "metrics": {
-    "rmse": 5.168245538696855,
-    "mae": 2.050172110182955,
-    "r2": 0.9423410194166835
+    "rmse": 5.841030614162841,
+    "mae": 2.1647262400781035,
+    "r2": 0.9353326902352385
   },
   "params": {
     "maxDepth": 6,
@@ -21,27 +23,42 @@
     "seed": 42
   },
   "execution": {
-    "duration_seconds": 3774.52
+    "duration_seconds": 6401.36
+  },
+  "promotion": {
+    "decision": "discarded",
+    "metrics_improved": {
+      "rmse": false,
+      "mae": false,
+      "r2": false
+    },
+    "improvement_count": 0,
+    "reason": "Candidate only improves 0/3 metrics - keeping current model",
+    "current_model_metrics": {
+      "rmse": 5.8410261323157,
+      "mae": 2.1647239745125337,
+      "r2": 0.9353327894741932
+    }
   },
   "error_analysis": {
     "summary": {
-      "count": 1156796,
-      "mean_error": -0.0007600774471610143,
-      "std_error": 5.168247716669317,
-      "min_error": -340.04203168013106,
-      "max_error": 923.2591236127189,
-      "median_error": 0.11695036092314481,
-      "mean_abs_error": 2.050172110182955,
-      "p25_error": -1.0650902582974382,
-      "p75_error": 1.1030970588924411,
-      "p95_error": 3.8869731060671135,
-      "p99_error": 10.636948396270128,
-      "pct_underestimate": 46.99,
-      "pct_overestimate": 53.01
+      "count": 3166641,
+      "mean_error": 0.145219175396317,
+      "std_error": 5.839226044100965,
+      "min_error": -256.7023916619582,
+      "max_error": 2355.116682292286,
+      "median_error": 0.18174923071910953,
+      "mean_abs_error": 2.1647262400781035,
+      "p25_error": -0.9815665941873153,
+      "p75_error": 1.2073525954357471,
+      "p95_error": 4.4511372923846295,
+      "p99_error": 11.806643338267506,
+      "pct_underestimate": 45.09,
+      "pct_overestimate": 54.91
     },
     "business_insights": [
       "Model predictions are well-balanced between over/under estimation.",
-      "Most common cause of high errors: 'cash_payment_tip_not_recorded' (6/10 top errors)."
+      "Most common cause of high errors: 'extended_duration_traffic_or_wait' (6/10 top errors)."
     ]
   }
 }

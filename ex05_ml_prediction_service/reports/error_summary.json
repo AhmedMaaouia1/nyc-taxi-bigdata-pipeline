@@ -1,22 +1,22 @@
 {
-  "rows_analyzed": 1156796,
+  "rows_analyzed": 3166641,
   "summary": {
-    "count": 1156796,
-    "mean_error": -0.0007600774471610143,
-    "std_error": 5.168247716669317,
-    "min_error": -340.04203168013106,
-    "max_error": 923.2591236127189,
-    "median_error": 0.11695036092314481,
-    "mean_abs_error": 2.050172110182955,
-    "p25_error": -1.0650902582974382,
-    "p75_error": 1.1030970588924411,
-    "p95_error": 3.8869731060671135,
-    "p99_error": 10.636948396270128,
-    "pct_underestimate": 46.99,
-    "pct_overestimate": 53.01
+    "count": 3166641,
+    "mean_error": 0.145219175396317,
+    "std_error": 5.839226044100965,
+    "min_error": -256.7023916619582,
+    "max_error": 2355.116682292286,
+    "median_error": 0.18174923071910953,
+    "mean_abs_error": 2.1647262400781035,
+    "p25_error": -0.9815665941873153,
+    "p75_error": 1.2073525954357471,
+    "p95_error": 4.4511372923846295,
+    "p99_error": 11.806643338267506,
+    "pct_underestimate": 45.09,
+    "pct_overestimate": 54.91
   },
   "business_insights": [
     "Model predictions are well-balanced between over/under estimation.",
-    "Most common cause of high errors: 'cash_payment_tip_not_recorded' (6/10 top errors)."
+    "Most common cause of high errors: 'extended_duration_traffic_or_wait' (6/10 top errors)."
   ]
 }

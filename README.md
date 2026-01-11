@@ -227,6 +227,7 @@ Service de prédiction ML pour l'estimation des tarifs de courses.
 Orchestration du pipeline complet via Apache Airflow.
 
 - DAG principal : `full_nyc_taxi_pipeline`
+- **Période traitée** : Janvier à Mai 2023 (5 mois)
 - Schedule : `@monthly` avec backfill activé
 - SLA sur tâches critiques
 - Vérification qualité inter-étapes (seuil 80%)
