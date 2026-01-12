@@ -782,13 +782,13 @@ Une application **Streamlit** a été développée pour permettre l'exploration 
 Ci-dessous quelques captures d'écran de l'application Streamlit :
 
 <p align="center">
-  <img src="../../Documents/Captures/ML%20streamlit/1.png" alt="Accueil Streamlit" width="600"/>
+  <img src="../Documents/Captures/ML%20streamlit/1.png" alt="Accueil Streamlit" width="600"/>
   <br/>
-  <img src="../../Documents/Captures/ML%20streamlit/2.png" alt="Métriques et prédictions" width="600"/>
+  <img src="../Documents/Captures/ML%20streamlit/2.png" alt="Métriques et prédictions" width="600"/>
   <br/>
-  <img src="../../Documents/Captures/ML%20streamlit/3.png" alt="Analyse d'erreurs" width="600"/>
+  <img src="../Documents/Captures/ML%20streamlit/3.png" alt="Analyse d'erreurs" width="600"/>
   <br/>
-  <img src="../../Documents/Captures/ML%20streamlit/4.png" alt="Exploration interactive" width="600"/>
+  <img src="../Documents/Captures/ML%20streamlit/4.png" alt="Exploration interactive" width="600"/>
 </p>
 
 L'application est accessible dans le dossier : `ex05_ml_prediction_service/streamlit_app/app.py`.
