@@ -192,6 +192,9 @@ Le dashboard utilise un thème sombre moderne avec :
 ## Captures d'écran
 
 *Le dashboard affiche les KPIs, graphiques temporels, distribution des paiements et classement des zones.*
+---
+![Architecture](../Documents/Captures/Dataviz/Dataviz1.png)
+![Architecture](../Documents/Captures/Dataviz/Dataviz2.png)
 
 ---
 
