@@ -361,6 +361,43 @@ models/ex05_spark_model/
   "r2": 0.94
 }
 ```
+---
+
+## Application Streamlit – Visualisation et Démonstration
+
+Une application **Streamlit** a été développée pour permettre l'exploration interactive des résultats du modèle de prédiction et l'analyse des données. Cette interface facilite la visualisation des prédictions, des métriques et des analyses d'erreurs, tout en offrant une expérience utilisateur simple et efficace.
+
+### Fonctionnalités principales
+
+- Visualisation des prédictions du modèle sur des échantillons de données
+- Affichage des métriques de performance (RMSE, MAE, R²)
+- Analyse d'erreurs par tranche de prix
+- Exploration interactive des données d'entrée et des résultats
+
+---
+### Aperçu de l'application
+
+Ci-dessous quelques captures d'écran de l'application Streamlit :
+
+<p align="center">
+  <img src="../Documents/Captures/ML%20streamlit/1.png" alt="Accueil Streamlit" width="600"/>
+  <br/>
+  <img src="../Documents/Captures/ML%20streamlit/2.png" alt="Métriques et prédictions" width="600"/>
+  <br/>
+  <img src="../Documents/Captures/ML%20streamlit/3.png" alt="Analyse d'erreurs" width="600"/>
+  <br/>
+  <img src="../Documents/Captures/ML%20streamlit/4.png" alt="Exploration interactive" width="600"/>
+</p>
+
+L'application est accessible dans le dossier : `ex05_ml_prediction_service/streamlit_app/app.py`.
+
+Pour lancer l'application :
+
+```bash
+cd ex05_ml_prediction_service/streamlit_app
+streamlit run app.py
+```
+---
 
 > 👉 La contrainte de l'énoncé (**RMSE < 10**) est largement respectée.
 
@@ -762,43 +799,6 @@ Le script est **idempotent** : toute la logique métier (comparaison, promotion)
 Cet exercice constitue une première implémentation complète d'un **pipeline ML distribué**, intégrée dans une architecture Big Data existante. Il pose les bases solides d'une démarche MLOps, tout en respectant les contraintes industrielles : **reproductibilité**, **qualité du code**, **traçabilité** et **performance**.
 
 ---
-
-
----
-
-## Application Streamlit – Visualisation et Démonstration
-
-Une application **Streamlit** a été développée pour permettre l'exploration interactive des résultats du modèle de prédiction et l'analyse des données. Cette interface facilite la visualisation des prédictions, des métriques et des analyses d'erreurs, tout en offrant une expérience utilisateur simple et efficace.
-
-### Fonctionnalités principales
-
-- Visualisation des prédictions du modèle sur des échantillons de données
-- Affichage des métriques de performance (RMSE, MAE, R²)
-- Analyse d'erreurs par tranche de prix
-- Exploration interactive des données d'entrée et des résultats
-
-### Aperçu de l'application
-
-Ci-dessous quelques captures d'écran de l'application Streamlit :
-
-<p align="center">
-  <img src="../Documents/Captures/ML%20streamlit/1.png" alt="Accueil Streamlit" width="600"/>
-  <br/>
-  <img src="../Documents/Captures/ML%20streamlit/2.png" alt="Métriques et prédictions" width="600"/>
-  <br/>
-  <img src="../Documents/Captures/ML%20streamlit/3.png" alt="Analyse d'erreurs" width="600"/>
-  <br/>
-  <img src="../Documents/Captures/ML%20streamlit/4.png" alt="Exploration interactive" width="600"/>
-</p>
-
-L'application est accessible dans le dossier : `ex05_ml_prediction_service/streamlit_app/app.py`.
-
-Pour lancer l'application :
-
-```bash
-cd ex05_ml_prediction_service/streamlit_app
-streamlit run app.py
-```
 
 ---
 
