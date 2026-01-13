@@ -4,8 +4,6 @@
 ---
 
 **Auteur** : Ahmed Maaouia  
-**Formation** : CY Tech - Master Big Data (2024-2025)  
-**Date de rendu** : Janvier 2026  
 **Lien GitHub** : https://github.com/AhmedMaaouia1/nyc-taxi-bigdata-pipeline
 
 ---
@@ -869,9 +867,3 @@ POSTGRES_PASSWORD=postgres
 - PySpark MLlib Guide : https://spark.apache.org/docs/latest/ml-guide.html
 - Medallion Architecture : https://www.databricks.com/glossary/medallion-architecture
 
----
-
-**Fin du rapport**
-
-*Document rédigé dans le cadre du cours Big Data - CY Tech 2024-2025*  
-*Rendu : Janvier 2026*
